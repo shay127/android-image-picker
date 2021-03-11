@@ -109,10 +109,10 @@ public class ImagePickerUtils {
         return mimeType != null && mimeType.startsWith("video");
     }
 
-    public static String getVideoDurationLabel(Context context, File file) {
+    public static String getVideoDurationLabel(Context context, Uri uri) {
         try {
             MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-            retriever.setDataSource(context, Uri.fromFile(file));
+            retriever.setDataSource(context, uri);
             Long duration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
             retriever.release();
             long second = (duration / 1000) % 60;
