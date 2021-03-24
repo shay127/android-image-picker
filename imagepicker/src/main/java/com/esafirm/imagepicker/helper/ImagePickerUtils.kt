@@ -109,7 +109,7 @@ object ImagePickerUtils {
             } else {
                 String.format("%02d:%02d", minute, second)
             }
-        } catch (RuntimeException ex) {
+        } catch (ex: RuntimeException) {
             // something went wrong with the file, ignore it and continue
             return "n/a";
         }
