@@ -96,17 +96,22 @@ object ImagePickerUtils {
     }
 
     fun getVideoDurationLabel(context: Context?, uri: Uri): String {
-        val retriever = MediaMetadataRetriever()
-        retriever.setDataSource(context, uri)
-        val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION).toLong()
-        retriever.release()
-        val second = duration / 1000 % 60
-        val minute = duration / (1000 * 60) % 60
-        val hour = duration / (1000 * 60 * 60) % 24
-        return if (hour > 0) {
-            String.format("%02d:%02d:%02d", hour, minute, second)
-        } else {
-            String.format("%02d:%02d", minute, second)
+        try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(context, uri)
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION).toLong()
+            retriever.release()
+            val second = duration / 1000 % 60
+            val minute = duration / (1000 * 60) % 60
+            val hour = duration / (1000 * 60 * 60) % 24
+            return if (hour > 0) {
+                String.format("%02d:%02d:%02d", hour, minute, second)
+            } else {
+                String.format("%02d:%02d", minute, second)
+            }
+        } catch (RuntimeException ex) {
+            // something went wrong with the file, ignore it and continue
+            return "n/a";
         }
     }
 
