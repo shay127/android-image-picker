@@ -110,22 +110,17 @@ public class ImagePickerUtils {
     }
 
     public static String getVideoDurationLabel(Context context, Uri uri) {
-        try {
-            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-            retriever.setDataSource(context, uri);
-            Long duration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-            retriever.release();
-            long second = (duration / 1000) % 60;
-            long minute = (duration / (1000 * 60)) % 60;
-            long hour = (duration / (1000 * 60 * 60)) % 24;
-            if (hour > 0) {
-                return String.format("%02d:%02d:%02d", hour, minute, second);
-            } else {
-                return String.format("%02d:%02d", minute, second);
-            }
-        } catch (RuntimeException ex) {
-            // something went wrong with the file, ignore it and continue
-            return "n/a";
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        retriever.setDataSource(context, uri);
+        Long duration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+        retriever.release();
+        long second = (duration / 1000) % 60;
+        long minute = (duration / (1000 * 60)) % 60;
+        long hour = (duration / (1000 * 60 * 60)) % 24;
+        if (hour > 0) {
+            return String.format("%02d:%02d:%02d", hour, minute, second);
+        } else {
+            return String.format("%02d:%02d", minute, second);
         }
     }
 
