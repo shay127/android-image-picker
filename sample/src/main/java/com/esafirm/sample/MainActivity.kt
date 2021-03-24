@@ -1,119 +1,121 @@
 package com.esafirm.sample
 
+import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Environment
 import androidx.appcompat.app.AppCompatActivity
 import com.esafirm.imagepicker.features.*
+import com.esafirm.imagepicker.features.cameraonly.CameraOnlyConfig
 import com.esafirm.imagepicker.features.imageloader.DefaultImageLoader
+import com.esafirm.imagepicker.features.imageloader.ImageLoader
 import com.esafirm.imagepicker.model.Image
-import com.esafirm.rximagepicker.RxImagePicker
-import kotlinx.android.synthetic.main.activity_main.*
-import rx.Observable
+import com.esafirm.sample.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var binding: ActivityMainBinding
+
     private val images = arrayListOf<Image>()
+
+    private val imagePickerLauncher = registerImagePicker {
+        images.clear()
+        images.addAll(it)
+        printImages(images)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        button_pick_image.setOnClickListener { start() }
-        button_pick_image_rx.setOnClickListener { imagePickerObservable.forEach(action) }
-        button_intent.setOnClickListener { startWithIntent() }
-        button_camera.setOnClickListener { captureImage() }
-        button_custom_ui.setOnClickListener { startCustomUI() }
-        button_launch_fragment.setOnClickListener {
+        binding = ActivityMainBinding.inflate(layoutInflater).also {
+            setContentView(it.root)
+        }
+        setupButtons()
+    }
+
+    private fun setupButtons() = binding.run {
+        buttonPickImage.setOnClickListener { start() }
+        buttonIntent.setOnClickListener { startWithIntent() }
+        buttonCamera.setOnClickListener { captureImage() }
+        buttonCustomUi.setOnClickListener { startCustomUI() }
+        buttonLaunchFragment.setOnClickListener {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container, MainFragment())
                 .commitAllowingStateLoss()
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        if (requestCode == RC_CAMERA) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                captureImage()
-            }
-        }
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-
     private fun captureImage() {
-        ImagePicker.cameraOnly().start(this)
+        imagePickerLauncher.launch(CameraOnlyConfig())
     }
 
-    private val action = { images: List<Image>? -> printImages(images) }
-    private val imagePickerObservable: Observable<List<Image>>
-        get() = RxImagePicker.instance
-            .start(this, ImagePicker.create(this))// max images can be selected (99 by default)
+    private fun createConfig(): ImagePickerConfig {
+        val returnAfterCapture = binding.switchReturnAfterCapture.isChecked
+        val isSingleMode = binding.switchSingle.isChecked
+        val useCustomImageLoader = binding.switchImageloader.isChecked
+        val folderMode = binding.switchFolderMode.isChecked
+        val includeVideo = binding.switchIncludeVideo.isChecked
+        val onlyVideo = binding.switchOnlyVideo.isChecked
+        val isExclude = binding.switchIncludeExclude.isChecked
 
-    private val imagePicker: ImagePicker
-        get() {
-            val returnAfterCapture = ef_switch_return_after_capture.isChecked
-            val isSingleMode = ef_switch_single.isChecked
-            val useCustomImageLoader = ef_switch_imageloader.isChecked
-            val folderMode = ef_switch_folder_mode.isChecked
-            val includeVideo = ef_switch_include_video.isChecked
-            val onlyVideo = ef_switch_only_video.isChecked
-            val isExclude = ef_switch_include_exclude.isChecked
+        ImagePickerComponentsHolder.setInternalComponent(
+            CustomImagePickerComponents(this, useCustomImageLoader)
+        )
 
-            val imagePicker = ImagePicker.create(this)
-                .language("in") // Set image picker language
-                .theme(R.style.ImagePickerTheme)
-                .returnMode(if (returnAfterCapture) ReturnMode.ALL else ReturnMode.NONE) // set whether pick action or camera action should return immediate result or not. Only works in single mode for image picker
-                .folderMode(folderMode) // set folder mode (false by default)
-                .includeVideo(includeVideo) // include video (false by default)
-                .onlyVideo(onlyVideo) // include video (false by default)
-                .toolbarArrowColor(Color.RED) // set toolbar arrow up color
-                .toolbarFolderTitle("Folder") // folder selection title
-                .toolbarImageTitle("Tap to select") // image selection title
-                .toolbarDoneButtonText("DONE") // done button text
+        return ImagePickerConfig {
 
-            ImagePickerComponentHolder.getInstance().imageLoader = if (useCustomImageLoader) {
-                GrayscaleImageLoader()
+            mode = if (isSingleMode) {
+                ImagePickerMode.SINGLE
             } else {
-                DefaultImageLoader()
+                ImagePickerMode.MULTIPLE // multi mode (default mode)
             }
 
-            if (isSingleMode) {
-                imagePicker.single()
-            } else {
-                imagePicker.multi() // multi mode (default mode)
-            }
+            language = "in" // Set image picker language
+            theme = R.style.ImagePickerTheme
+
+            // set whether pick action or camera action should return immediate result or not. Only works in single mode for image picker
+            returnMode = if (returnAfterCapture) ReturnMode.ALL else ReturnMode.NONE
+
+            isFolderMode = folderMode // set folder mode (false by default)
+            isIncludeVideo = includeVideo // include video (false by default)
+            isOnlyVideo = onlyVideo // include video (false by default)
+            arrowColor = Color.RED // set toolbar arrow up color
+            folderTitle = "Folder" // folder selection title
+            imageTitle = "Tap to select" // image selection title
+            doneButtonText = "DONE" // done button text
+            limit = 10 // max images can be selected (99 by default)
+            isShowCamera = true // show camera or not (true by default)
+            savePath = ImagePickerSavePath("Camera") // captured image directory name ("Camera" folder by default)
+            savePath = ImagePickerSavePath(Environment.getExternalStorageDirectory().path, isRelative = false) // can be a full path
+
             if (isExclude) {
-                imagePicker.exclude(images) // don't show anything on this selected images
+                excludedImages = images.toFiles() // don't show anything on this selected images
             } else {
-                imagePicker.origin(images) // original selected images, used in multi mode
+                selectedImages = images  // original selected images, used in multi mode
             }
-            return imagePicker.limit(10) // max images can be selected (99 by default)
-                .showCamera(true) // show camera or not (true by default)
-                .imageDirectory("Camera") // captured image directory name ("Camera" folder by default)
-                .imageFullDirectory(Environment.getExternalStorageDirectory().path) // can be full path
         }
+    }
 
     private fun startWithIntent() {
-        startActivityForResult(imagePicker.getIntent(this), IpCons.RC_IMAGE_PICKER)
+        val intent = createImagePickerIntent(this, createConfig())
+        startActivityForResult(intent, IpCons.RC_IMAGE_PICKER)
     }
 
     private fun start() {
-        imagePicker.start() // start image picker activity with request code
+        imagePickerLauncher.launch(createConfig())
     }
 
     private fun startCustomUI() {
-        val config = imagePicker.config
         val intent = Intent(this, CustomUIActivity::class.java)
-        intent.putExtra(ImagePickerConfig::class.java.simpleName, config)
+        intent.putExtra(ImagePickerConfig::class.java.simpleName, createConfig())
         startActivityForResult(intent, IpCons.RC_IMAGE_PICKER)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (ImagePicker.shouldHandle(requestCode, resultCode, data)) {
+        if (resultCode == Activity.RESULT_OK && requestCode == IpCons.RC_IMAGE_PICKER && data != null) {
             images.clear()
-            images.addAll(ImagePicker.getImages(data))
+            images.addAll(ImagePicker.getImages(data) ?: emptyList())
             printImages(images)
             return
         }
@@ -122,13 +124,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun printImages(images: List<Image>?) {
         if (images == null) return
-        text_view.text = images.joinToString("\n")
-        text_view.setOnClickListener {
+        binding.textView.text = images.joinToString("\n")
+        binding.textView.setOnClickListener {
             ImageViewerActivity.start(this@MainActivity, images)
         }
-    }
-
-    companion object {
-        private const val RC_CAMERA = 3000
     }
 }

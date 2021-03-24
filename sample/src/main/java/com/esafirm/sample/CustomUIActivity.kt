@@ -12,7 +12,6 @@ import android.view.MenuItem
 import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import androidx.core.content.ContentProviderCompat.requireContext
 import com.esafirm.imagepicker.features.ImagePickerConfig
 import com.esafirm.imagepicker.features.ImagePickerFragment
 import com.esafirm.imagepicker.features.ImagePickerInteractionListener
@@ -22,13 +21,15 @@ import com.esafirm.imagepicker.helper.IpLogger
 import com.esafirm.imagepicker.helper.LocaleManager
 import com.esafirm.imagepicker.helper.ViewUtils
 import com.esafirm.imagepicker.model.Image
-import kotlinx.android.synthetic.main.activity_custom_ui.*
+import com.esafirm.sample.databinding.ActivityCustomUiBinding
 
 /**
  * This custom UI for ImagePicker puts the picker in the bottom half of the screen, and a preview of
  * the last selected image in the top half.
  */
 class CustomUIActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityCustomUiBinding
 
     private lateinit var actionBar: ActionBar
     private lateinit var imagePickerFragment: ImagePickerFragment
@@ -42,6 +43,11 @@ class CustomUIActivity : AppCompatActivity() {
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        binding = ActivityCustomUiBinding.inflate(layoutInflater).also {
+            setContentView(it.root)
+        }
+
         setResult(RESULT_CANCELED)
         config = intent.extras?.getParcelable(ImagePickerConfig::class.java.simpleName)
         cameraOnlyConfig = intent.extras?.getParcelable(CameraOnlyConfig::class.java.simpleName)
@@ -51,17 +57,16 @@ class CustomUIActivity : AppCompatActivity() {
             setTheme(theme)
         }
 
-        setContentView(R.layout.activity_custom_ui)
         setupView()
 
         if (savedInstanceState != null) {
             // The fragment has been restored.
-            IpLogger.getInstance().e("Fragment has been restored")
+            IpLogger.e("Fragment has been restored")
             imagePickerFragment = supportFragmentManager
                 .findFragmentById(R.id.ef_imagepicker_fragment_placeholder) as ImagePickerFragment
         } else {
-            IpLogger.getInstance().e("Making fragment")
-            imagePickerFragment = ImagePickerFragment.newInstance(config, cameraOnlyConfig)
+            IpLogger.e("Making fragment")
+            imagePickerFragment = ImagePickerFragment.newInstance(config!!)
             supportFragmentManager.beginTransaction()
                 .replace(R.id.ef_imagepicker_fragment_placeholder, imagePickerFragment)
                 .commit()
@@ -90,7 +95,7 @@ class CustomUIActivity : AppCompatActivity() {
         }
         val menuDone = menu.findItem(com.esafirm.imagepicker.R.id.menu_done)
         if (menuDone != null) {
-            menuDone.title = ConfigUtils.getDoneButtonText(this, config)
+            menuDone.title = ConfigUtils.getDoneButtonText(this, config!!)
             menuDone.isVisible = imagePickerFragment.isShowDoneButton
         }
         return super.onPrepareOptionsMenu(menu)
@@ -110,7 +115,7 @@ class CustomUIActivity : AppCompatActivity() {
             return true
         }
         if (id == com.esafirm.imagepicker.R.id.menu_camera) {
-            imagePickerFragment.captureImageWithPermission()
+            imagePickerFragment.captureImage()
             return true
         }
         return super.onOptionsItemSelected(item)
@@ -129,7 +134,7 @@ class CustomUIActivity : AppCompatActivity() {
     }
 
     private fun setupView() {
-        setSupportActionBar(toolbar as Toolbar)
+        setSupportActionBar(binding.toolbar as Toolbar)
         checkNotNull(supportActionBar)
 
         actionBar = supportActionBar!!
@@ -147,7 +152,7 @@ class CustomUIActivity : AppCompatActivity() {
     }
 
     internal inner class CustomInteractionListener : ImagePickerInteractionListener {
-        override fun setTitle(title: String) {
+        override fun setTitle(title: String?) {
             actionBar.title = title
             invalidateOptionsMenu()
         }
@@ -156,9 +161,16 @@ class CustomUIActivity : AppCompatActivity() {
             finish()
         }
 
-        override fun selectionChanged(imageList: List<Image>) {
+        override fun finishPickImages(result: Intent?) {
+            setResult(RESULT_OK, result)
+            finish()
+        }
+
+        override fun selectionChanged(imageList: List<Image>?) {
+            if (imageList == null) error("Image list is null")
+
             if (imageList.isEmpty()) {
-                photo_preview.setImageDrawable(null)
+                binding.photoPreview.setImageDrawable(null)
             } else {
                 val imageUri = imageList[imageList.size - 1].uri
                 val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -166,13 +178,8 @@ class CustomUIActivity : AppCompatActivity() {
                 } else {
                     MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
                 }
-                photo_preview.setImageBitmap(bitmap)
+                binding.photoPreview.setImageBitmap(bitmap)
             }
-        }
-
-        override fun finishPickImages(result: Intent) {
-            setResult(RESULT_OK, result)
-            finish()
         }
     }
 }

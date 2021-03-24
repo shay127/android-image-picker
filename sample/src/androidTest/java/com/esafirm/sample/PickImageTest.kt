@@ -10,21 +10,17 @@ import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.contrib.RecyclerViewActions.actionOnItemAtPosition
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
-import androidx.test.espresso.matcher.ViewMatchers.withClassName
 import androidx.test.espresso.matcher.ViewMatchers.withId
-import androidx.test.espresso.matcher.ViewMatchers.withParent
-import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.filters.LargeTest
 import androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner
 import androidx.test.rule.ActivityTestRule
 import androidx.test.rule.GrantPermissionRule
 import com.esafirm.sample.matchers.hasDrawable
+import com.esafirm.sample.utils.Views
 import org.hamcrest.Description
 import org.hamcrest.Matcher
-import org.hamcrest.Matchers.`is`
 import org.hamcrest.Matchers.allOf
 import org.hamcrest.TypeSafeMatcher
-import org.hamcrest.core.IsInstanceOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,40 +39,19 @@ class PickImageTest {
 
     @Test
     fun pickImage() {
-        val appCompatButton = onView(
-            allOf(withId(R.id.button_pick_image), withText("PICK IMAGE"),
-                childAtPosition(
-                    childAtPosition(
-                        withId(R.id.ef_bottom_container),
-                        0),
-                    0),
-                isDisplayed()))
+        val appCompatButton = Views.pickImageButton()
         appCompatButton.perform(click())
 
-        val recyclerView = onView(
-            allOf(withId(R.id.recyclerView),
-                childAtPosition(
-                    withClassName(`is`("android.widget.RelativeLayout")),
-                    2)))
+        val recyclerView = Views.recyclersView()
         recyclerView.perform(actionOnItemAtPosition<ViewHolder>(0, click()))
 
-        val actionMenuItemView = onView(
-            allOf(withId(R.id.menu_done), withText("DONE"),
-                childAtPosition(
-                    childAtPosition(
-                        withId(R.id.toolbar),
-                        2),
-                    1),
-                isDisplayed()))
+        val actionMenuItemView = Views.pickerDoneButton()
         actionMenuItemView.perform(click())
 
         val appCompatTextView = onView(allOf(withId(R.id.text_view)))
         appCompatTextView.perform(scrollTo(), click())
 
-        val imageView = onView(
-            allOf(withParent(allOf(withId(R.id.container),
-                withParent(IsInstanceOf.instanceOf(android.widget.ScrollView::class.java)))),
-                isDisplayed()))
+        val imageView = Views.imageDetail()
         imageView.check(matches(isDisplayed()))
         imageView.check(matches(hasDrawable()))
     }
